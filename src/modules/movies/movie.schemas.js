@@ -14,7 +14,6 @@ const baseMovieSchema = z.object({
     .optional(),
   duration: z.coerce
     .number()
-    .int("Duration must be an integer")
     .positive("Duration must be positive")
     .optional(),
   genre: z.array(z.string()).optional(),

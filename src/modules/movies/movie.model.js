@@ -4,9 +4,9 @@ const movieSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, index: true },
     description: { type: String },
-    rating: { type: Number, required: true, index: true }, // e.g. 8.7
+    rating: { type: Number, required: true, index: true }, 
     releaseDate: { type: Date, index: true },
-    duration: { type: Number, index: true }, // minutes
+    duration: { type: Number,required: true, index: true }, 
     genre: [String],
     posterUrl: String
   },
