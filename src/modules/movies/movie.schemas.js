@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+const castMemberSchema = z.object({
+  name: z.string().min(1, "Actor name is required"),
+  characterName: z.string().min(1, "Character name is required"),
+  imageUrl: z.string().url("Actor image URL must be a valid URL").optional(),
+});
+
+const crewMemberSchema = z.object({
+  role: z.string().min(1, "Crew role is required"),
+  name: z.string().min(1, "Crew name is required"),
+});
+
 const baseMovieSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required").optional(),
@@ -12,12 +23,13 @@ const baseMovieSchema = z.object({
     .min(1, "Release date is required")
     .or(z.date())
     .optional(),
-  duration: z.coerce
-    .number()
-    .positive("Duration must be positive")
-    .optional(),
+  duration: z.coerce.number().positive("Duration must be positive").optional(),
   genre: z.array(z.string()).optional(),
   posterUrl: z.string().url("Poster URL must be a valid URL").optional(),
+
+  cast: z.array(castMemberSchema).optional(),
+  crew: z.array(crewMemberSchema).optional(),
+  trailerUrl: z.string().url("Trailer URL must be a valid URL").optional(),
 });
 
 export const movieCreateSchema = baseMovieSchema.extend({
@@ -27,7 +39,6 @@ export const movieCreateSchema = baseMovieSchema.extend({
     .min(0, "Rating cannot be negative")
     .max(10, "Rating cannot be more than 10"),
 });
-
 export const movieUpdateSchema = baseMovieSchema.partial();
 
 export const getMoviesQuerySchema = z.object({

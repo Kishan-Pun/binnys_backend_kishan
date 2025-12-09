@@ -16,7 +16,7 @@ import {
   sortMoviesQuerySchema,
   searchMoviesQuerySchema
 } from "./movie.schemas.js";
-import { protect } from "../../middleware/auth.js";
+import { authMiddleware } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/requireRole.js";
 
 const router = express.Router();
@@ -30,20 +30,20 @@ router.get("/:id", getMovieById);
 // Protected admin routes
 router.post(
   "/",
-  protect,
-  requireRole("admin"),
+  authMiddleware,
+  requireRole("admin", "superadmin"),
   validate(movieCreateSchema, "body"),
   createMovie
 );
 
 router.put(
   "/:id",
-  protect,
-  requireRole("admin"),
+  authMiddleware,
+  requireRole("admin", "superadmin"),
   validate(movieUpdateSchema, "body"),
   updateMovie
 );
 
-router.delete("/:id", protect, requireRole("admin"), deleteMovie);
+router.delete("/:id", authMiddleware, requireRole("admin"), deleteMovie);
 
 export default router;
