@@ -44,6 +44,6 @@ router.put(
   updateMovie
 );
 
-router.delete("/:id", authMiddleware, requireRole("admin"), deleteMovie);
+router.delete("/:id", authMiddleware, requireRole("admin", "superadmin"), deleteMovie);
 
 export default router;

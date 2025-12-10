@@ -1,52 +1,54 @@
-import "dotenv/config";
 import { Worker } from "bullmq";
+import { MOVIE_QUEUE_NAME } from "./movieQueue.js";
 import { redisConnection } from "../config/redis.js";
-import { connectDB } from "../config/db.js";
-import { movieService } from "../modules/movies/movie.service.js";
+import { movieService } from "../modules/movies/movie.service.js"; // reuse service
+import { movieCreateSchema } from "../modules/movies/movie.schemas.js";
 
-const MOVIE_QUEUE_NAME = "movie-insert-queue";
+let movieWorkerInstance = null;
 
-const start = async () => {
-  try {
-    if (!process.env.REDIS_URL || !redisConnection) {
-      console.log(
-        "REDIS_URL not set or Redis not available. Worker will not start."
-      );
-      process.exit(0);
-    }
-
-    await connectDB();
-    console.log("Worker connected to MongoDB");
-
-    const worker = new Worker(
-      MOVIE_QUEUE_NAME,
-      async (job) => {
-        if (job.name === "add-movie") {
-          console.log("Processing job:", job.id, job.data.title);
-          await movieService.createMovie(job.data);
-          console.log("Movie inserted:", job.data.title);
-        } else {
-          console.log("Unknown job type:", job.name);
-        }
-      },
-      {
-        connection: redisConnection
-      }
-    );
-
-    worker.on("completed", (job) => {
-      console.log(`Job ${job.id} completed`);
-    });
-
-    worker.on("failed", (job, err) => {
-      console.error(`Job ${job?.id} failed:`, err?.message);
-    });
-
-    console.log(`Movie worker is listening on queue: ${MOVIE_QUEUE_NAME}`);
-  } catch (err) {
-    console.error("Worker startup error:", err.message);
-    process.exit(1);
+export function startMovieWorker() {
+  if (!process.env.REDIS_URL) {
+    console.log("[Worker] REDIS_URL not set. Movie worker not started.");
+    return;
   }
-};
 
-start();
+  if (movieWorkerInstance) {
+    console.log("[Worker] Movie worker already running in this process.");
+    return;
+  }
+
+  movieWorkerInstance = new Worker(
+    MOVIE_QUEUE_NAME,
+    async (job) => {
+      console.log("[Worker] job.data:", job.data);
+
+      const { movieData } = job.data || {};
+
+      if (!movieData) {
+        throw new Error("movieData missing from job payload");
+      }
+
+      const result = movieCreateSchema.safeParse(movieData);
+      if (!result.success) {
+        console.error("[Worker] Zod validation failed:", result.error.format());
+        throw new Error("Zod validation failed in worker");
+      }
+
+      const validated = result.data;
+
+      const created = await movieService.createMovie(validated);
+      return created;
+    },
+    { connection: redisConnection }
+  );
+
+  movieWorkerInstance.on("completed", (job) => {
+    console.log(`[Worker] Movie job ${job.id} completed`);
+  });
+
+  movieWorkerInstance.on("failed", (job, err) => {
+    console.error(`[Worker] Movie job ${job?.id} failed`, err);
+  });
+
+  console.log("[Worker] Movie worker started in API process.");
+}

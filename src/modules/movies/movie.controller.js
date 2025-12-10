@@ -30,8 +30,14 @@ export const searchMovies = async (req, res, next) => {
 
 export const createMovie = async (req, res, next) => {
   try {
+    // NOTE: by the time we reach here, Zod validate middleware
+    // has already validated & coerced req.body (movieCreateSchema)
+
     if (movieQueue) {
-      const job = await movieQueue.add("add-movie", req.body);
+      // ✅ IMPORTANT: wrap inside { movieData: ... }
+      const job = await movieQueue.add("add-movie", {
+        movieData: req.body,
+      });
 
       return res.status(202).json({
         message: "Movie queued for insertion",
@@ -39,7 +45,7 @@ export const createMovie = async (req, res, next) => {
       });
     }
 
-    // Fallback: no Redis/queue → insert directly
+    // Fallback: no Redis/queue → insert directly via service
     const movie = await movieService.createMovie(req.body);
 
     return res.status(201).json({
